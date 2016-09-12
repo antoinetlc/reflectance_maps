@@ -46,7 +46,13 @@ using namespace std;
 
 int main(void)
 {
-    computeMaps(string(""), true);
+    //Call this function to compute the maps
+    //The first parameter is a path to the folder that contains the illumination measurements : par, cross, checkert.txt, mask.jpg
+    //The second parameter is set to true to use the cross polarised measurements or false otherwise.
+    //NOTE : the loading of the image file is currently hardcoded.
+    //The images are supposed to have a name : IMG_XXXX where XXXX is a number
+    //Within a folder (e.g parallel data) the pictures are supposed to have consecutive numbers.
+    computeMaps(string("path_to_folder"), true);
 
     return 0;
 }

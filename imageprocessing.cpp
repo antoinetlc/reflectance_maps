@@ -48,7 +48,7 @@ using namespace std;
  * @brief scaleTo01Range
  * @param image
  */
-void scaleTo01Range(Mat &image, Mat &maskObject)
+void scaleTo01Range(Mat &image, const Mat &maskObject)
 {
     int width = image.cols;
     int height = image.rows;

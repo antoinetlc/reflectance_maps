@@ -51,12 +51,28 @@ using namespace cv;
  */
 void computeMaps(string pathToFolder, bool isCrossData)
 {
+
+    //Load the mask object
+    //Mask that represent the area where the calculations are done
+    Mat mask = imread(pathToFolder + "/mask.JPG", CV_LOAD_IMAGE_COLOR);
+
+    if(!mask.data)
+    {
+        cerr << "Could not load image : " << pathToFolder + "/mask.JPG" << endl;
+        exit(-1);
+    }
+    else
+    {
+        mask.convertTo(mask, CV_32FC3);
+        mask /= 255.0;
+    }
+
     Mat parallelData[NUMBER_OF_GRADIENT_ILLUMINATION];
     Mat crossData[NUMBER_OF_GRADIENT_ILLUMINATION];
 
     ostringstream osstream;
     unsigned int imageNumberPar = 2855;
-    int imageNumberCross = 2869;
+    unsigned int imageNumberCross = 2869;
 
     /*--Load images parallelPolarised ---*/
     for(int i = 0 ; i<NUMBER_OF_GRADIENT_ILLUMINATION ; i++)
@@ -99,7 +115,7 @@ void computeMaps(string pathToFolder, bool isCrossData)
         removeAmbientIllumination(parallelData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientPar);
     }
 
-    //Load images cross polarised
+    /*---Load images cross polarised---*/
     if(isCrossData)
     {
         for(int i = 0 ; i<NUMBER_OF_GRADIENT_ILLUMINATION ; i++)
@@ -144,34 +160,33 @@ void computeMaps(string pathToFolder, bool isCrossData)
             removeAmbientIllumination(crossData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientCross);
         }
 
+        //Computations : diffuse, specular normals and roughness
         /*--Scale values with checkerchart ---*/
-        checkerchartScaling(parallelData, crossData, pathToFolder);
+        checkerchartScaling(parallelData, crossData, mask, pathToFolder);
 
-        diffuseSpecularSeparation(parallelData, crossData, pathToFolder);
+        diffuseSpecularSeparation(parallelData, crossData, mask, pathToFolder);
 
-        computeNormals(parallelData, pathToFolder);
+        computeNormals(parallelData, mask, pathToFolder);
 
         computeRoughness(parallelData, pathToFolder);
 
     }
     else
     {
+
+        //Computations : specular normals and roughness
         /*--Scale values with checkerchart ---*/
-        checkerchartScaling(parallelData, pathToFolder);
+        checkerchartScaling(parallelData,mask, pathToFolder);
 
         /*-Specular data-*/
         Mat specular = parallelData[0].clone();
 
-        Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
-        maskObject.convertTo(maskObject, CV_32FC3);
-        maskObject /= 255.0;
-
         //Scale down to 01 range and save the result
-        scaleTo01Range(specular, maskObject);
+        scaleTo01Range(specular, mask);
 
         savePFM(specular, pathToFolder + "/textures/specular.pfm");
 
-        computeNormals(parallelData, pathToFolder);
+        computeNormals(parallelData, mask, pathToFolder);
 
         computeRoughness(parallelData, pathToFolder);
 
@@ -182,9 +197,10 @@ void computeMaps(string pathToFolder, bool isCrossData)
  * Scale the value of parallel polarised data to the value of the checkerchart.
  * @brief checkerchartScaling
  * @param parallelData
+ * @param mask
  * @param pathToFolder
  */
-void checkerchartScaling(Mat parallelData[], string pathToFolder)
+void checkerchartScaling(Mat parallelData[], const Mat &mask, string pathToFolder)
 {
     /*--Read checkerchart values---*/
     string RParPicture, GParPicture, BParPicture;
@@ -193,44 +209,49 @@ void checkerchartScaling(Mat parallelData[], string pathToFolder)
 
     ifstream checkerFile(pathToFolder + "/checker.txt", ios::in);
 
-    //First line is parallel and second is cross polarised
-    checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
-
-    ratioParR = atof(checkerchartPar.c_str())/atof(RParPicture.c_str());
-    ratioParG = atof(checkerchartPar.c_str())/atof(GParPicture.c_str());
-    ratioParB = atof(checkerchartPar.c_str())/atof(BParPicture.c_str());
-
-    cout << "Parallel " << ratioParR << " - " << ratioParG << " - "<< ratioParB << endl;
-
-    int width = parallelData[0].cols;
-    int height = parallelData[0].rows;
-
-    /*--Scale parallel polarised values---*/
-    //White balancing with the checkerchart
-    for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
+    if(checkerFile)
     {
-        for(int i = 0 ; i<height ; i++)
+        //First line is parallel and second is cross polarised
+        checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
+
+        ratioParR = atof(checkerchartPar.c_str())/atof(RParPicture.c_str());
+        ratioParG = atof(checkerchartPar.c_str())/atof(GParPicture.c_str());
+        ratioParB = atof(checkerchartPar.c_str())/atof(BParPicture.c_str());
+
+        cout << "Parallel " << ratioParR << " - " << ratioParG << " - "<< ratioParB << endl;
+
+        int width = parallelData[0].cols;
+        int height = parallelData[0].rows;
+
+        /*--Scale parallel polarised values---*/
+        //White balancing with the checkerchart
+        for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
         {
-            for(int j = 0 ; j<width ; j++)
+            for(int i = 0 ; i<height ; i++)
             {
-                //OpenCV is in BGR
-                parallelData[k].at<Vec3f>(i,j).val[0] *= ratioParB;
-                parallelData[k].at<Vec3f>(i,j).val[1] *= ratioParG;
-                parallelData[k].at<Vec3f>(i,j).val[2] *= ratioParR;
+                for(int j = 0 ; j<width ; j++)
+                {
+                    //OpenCV is in BGR
+                    parallelData[k].at<Vec3f>(i,j).val[0] *= ratioParB;
+                    parallelData[k].at<Vec3f>(i,j).val[1] *= ratioParG;
+                    parallelData[k].at<Vec3f>(i,j).val[2] *= ratioParR;
+                }
             }
         }
+
+        //Scale down between 0 and 1 for the computation
+        for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
+        {
+            //Scale down to 01 range and save the result
+            scaleTo01Range(parallelData[k], mask);
+        }
     }
-
-    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
-    maskObject.convertTo(maskObject, CV_32FC3);
-    maskObject /= 255.0;
-
-    //Scale down between 0 and 1 for the computation
-    for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
+    else
     {
-        //Scale down to 01 range and save the result
-        scaleTo01Range(parallelData[k], maskObject);
+        cerr << "Could not the file image : " << pathToFolder << "/checker.txt" << endl;
+        exit(-1);
     }
+
 }
 
 /**
@@ -238,9 +259,10 @@ void checkerchartScaling(Mat parallelData[], string pathToFolder)
  * @brief checkerchartScaling
  * @param parallelData
  * @param crossData
+ * @param mask
  * @param pathToFolder
  */
-void checkerchartScaling(Mat parallelData[], Mat crossData[], string pathToFolder)
+void checkerchartScaling(Mat parallelData[], Mat crossData[], const Mat &mask, string pathToFolder)
 {
     /*--Read checkerchart values---*/
     string RParPicture, GParPicture, BParPicture;
@@ -253,59 +275,68 @@ void checkerchartScaling(Mat parallelData[], Mat crossData[], string pathToFolde
 
     ifstream checkerFile(pathToFolder + "/checker.txt", ios::in);
 
-    //First line is parallel and second is cross polarised
-    checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
-
-    ratioParR = atof(checkerchartPar.c_str())/atof(RParPicture.c_str());
-    ratioParG = atof(checkerchartPar.c_str())/atof(GParPicture.c_str());
-    ratioParB = atof(checkerchartPar.c_str())/atof(BParPicture.c_str());
-
-    checkerFile >> RCrossPicture >> GCrossPicture >> BCrossPicture >> checkerchartCross;
-
-    ratioCrossR = atof(checkerchartCross.c_str())/atof(RCrossPicture.c_str());
-    ratioCrossG = atof(checkerchartCross.c_str())/atof(GCrossPicture.c_str());
-    ratioCrossB = atof(checkerchartCross.c_str())/atof(BCrossPicture.c_str());
-
-    cout << "Parallel " << ratioParR << " - " << ratioParG << " - "<< ratioParB << endl;
-    cout << "Cross " << ratioCrossR << " - " << ratioCrossG << " - "<< ratioCrossB << endl;
-
-    int width = parallelData[0].cols;
-    int height = parallelData[0].rows;
-
-    /*--Scale parallel polarised values---*/
-    //White balancing with the checkerchart
-    for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
+    //If the file has been correctly opened
+    if(checkerFile)
     {
+        //First line is parallel and second is cross polarised
+        checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
 
-        for(int i = 0 ; i<height ; i++)
+        ratioParR = atof(checkerchartPar.c_str())/atof(RParPicture.c_str());
+        ratioParG = atof(checkerchartPar.c_str())/atof(GParPicture.c_str());
+        ratioParB = atof(checkerchartPar.c_str())/atof(BParPicture.c_str());
+
+        checkerFile >> RCrossPicture >> GCrossPicture >> BCrossPicture >> checkerchartCross;
+
+        ratioCrossR = atof(checkerchartCross.c_str())/atof(RCrossPicture.c_str());
+        ratioCrossG = atof(checkerchartCross.c_str())/atof(GCrossPicture.c_str());
+        ratioCrossB = atof(checkerchartCross.c_str())/atof(BCrossPicture.c_str());
+
+        cout << "Parallel " << ratioParR << " - " << ratioParG << " - "<< ratioParB << endl;
+        cout << "Cross " << ratioCrossR << " - " << ratioCrossG << " - "<< ratioCrossB << endl;
+
+        int width = parallelData[0].cols;
+        int height = parallelData[0].rows;
+
+        /*--Scale parallel polarised values---*/
+        //White balancing with the checkerchart
+        for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
         {
 
-            for(int j = 0 ; j<width ; j++)
+            for(int i = 0 ; i<height ; i++)
             {
 
-                //OpenCV is in BGR
-                parallelData[k].at<Vec3f>(i,j).val[0] *= ratioParB;
-                parallelData[k].at<Vec3f>(i,j).val[1] *= ratioParG;
-                parallelData[k].at<Vec3f>(i,j).val[2] *= ratioParR;
+                for(int j = 0 ; j<width ; j++)
+                {
 
-                crossData[k].at<Vec3f>(i,j).val[0] *= ratioCrossB;
-                crossData[k].at<Vec3f>(i,j).val[1] *= ratioCrossG;
-                crossData[k].at<Vec3f>(i,j).val[2] *= ratioCrossR;
+                    //OpenCV is in BGR
+                    parallelData[k].at<Vec3f>(i,j).val[0] *= ratioParB;
+                    parallelData[k].at<Vec3f>(i,j).val[1] *= ratioParG;
+                    parallelData[k].at<Vec3f>(i,j).val[2] *= ratioParR;
+
+                    crossData[k].at<Vec3f>(i,j).val[0] *= ratioCrossB;
+                    crossData[k].at<Vec3f>(i,j).val[1] *= ratioCrossG;
+                    crossData[k].at<Vec3f>(i,j).val[2] *= ratioCrossR;
+                }
             }
+         }
+
+
+        //After applying the checkerchart some pixels values might be above 1
+        //Scale down between 0 and 1 for the computation
+        for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
+        {
+            //Scale down to 01 range and save the result
+            scaleTo01Range(crossData[k], mask);
+            scaleTo01Range(parallelData[k], mask);
         }
-     }
 
-    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
-    maskObject.convertTo(maskObject, CV_32FC3);
-    maskObject /= 255.0;
-
-    //Scale down between 0 and 1 for the computation
-    for(int k = 0 ; k<NUMBER_OF_GRADIENT_ILLUMINATION ; k++)
-    {
-        //Scale down to 01 range and save the result
-        scaleTo01Range(crossData[k], maskObject);
-        scaleTo01Range(parallelData[k], maskObject);
     }
+    else
+    {
+        cerr << "Could not the file image : " << pathToFolder << "/checker.txt" << endl;
+        exit(-1);
+    }
+
 }
 
 /**
@@ -313,51 +344,52 @@ void checkerchartScaling(Mat parallelData[], Mat crossData[], string pathToFolde
  * Also requires a mask on which data is computed.
  * @brief checkerchartScaling
  * @param parallelData
+ * @param mask
  * @param pathToFolder
  */
-void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], string pathToFolder)
+void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], const Mat &mask, string pathToFolder)
 {
-    Mat diffuse;
-    Mat specular;
+    //Cross data contains diffuse only
+    //Parallel data contains diffuse+specular
+    Mat diffuse = crossData[0].clone();
+    Mat specular = parallelData[0].clone();
 
-
-    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
-    maskObject.convertTo(maskObject, CV_32FC3);
-    maskObject /= 255.0;
-
-    diffuse = crossData[0].clone();
-    specular = parallelData[0].clone();
-
+    //Remove the diffuse component
     specular -= diffuse;
 
     setNegativePixelsTo0(specular);
 
     //Scale down to 01 range and save the result
-    scaleTo01Range(diffuse, maskObject);
-    scaleTo01Range(specular, maskObject);
+    scaleTo01Range(diffuse, mask);
+    scaleTo01Range(specular, mask);
 
     savePFM(diffuse, pathToFolder + "/textures/diffuse.pfm");
     savePFM(specular, pathToFolder + "/textures/specular.pfm");
-
 }
 
 /**
  * Compute the specular normals given parallel and cross data.
  * Also requires a mask on which data is computed.
- * @brief computeNormals
+ * The sample is assumed to be almost flat without big variations in the z component of the normal.
+ * Therefore the measurements have been made without the zGradients.
  * @param parallelData
  * @param crossData
+ * @param mask
  * @param pathToFolder
  */
-void computeNormals(Mat parallelData[], Mat crossData[], string pathToFolder)
+void computeNormals(Mat parallelData[], Mat crossData[], const Mat &mask, string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
     Mat normals = Mat(parallelData[1].rows, parallelData[1].cols, CV_32FC3);
 
+    //The specular normals are computed : remove the cross data from the parallel data.
+    //X direction
     xGradient = parallelData[1].clone()-crossData[1].clone();
     minusXGradient = parallelData[2].clone()-crossData[2].clone();
 
+    //The specular normals are computed : remove the cross data from the parallel data.
+    //Y direction
     yGradient = parallelData[3].clone()-crossData[3].clone();
     minusYGradient = parallelData[4].clone()-crossData[4].clone();
 
@@ -367,15 +399,17 @@ void computeNormals(Mat parallelData[], Mat crossData[], string pathToFolder)
     int width = parallelData[0].cols;
     int height = parallelData[0].rows;
 
+    //Compute all the normals and normalize them
     for(int i = 0 ; i<height ; i++)
     {
-
         for(int j = 0 ; j<width ; j++)
         {
-
             //RGB = xyz
             //Calculations with green channel
             //Reflection : the camera sees xGradient as -xGradient and conversely
+
+            //x component of the normals : -xGradient - +xGradient
+            //y component of the normals : yGradient - -yGradient
             x = minusXGradient.at<Vec3f>(i,j).val[1]-xGradient.at<Vec3f>(i,j).val[1];
             y = yGradient.at<Vec3f>(i,j).val[1]-minusYGradient.at<Vec3f>(i,j).val[1];
             z = sqrt(1.0-x*x-y*y);
@@ -404,7 +438,7 @@ void computeNormals(Mat parallelData[], Mat crossData[], string pathToFolder)
         }
     }
 
-    alignAverageSurfaceNormal(normals, pathToFolder);
+    alignAverageSurfaceNormal(normals, mask);
 
     //Color mapping
     for(int i = 0 ; i<height ; i++)
@@ -425,14 +459,15 @@ void computeNormals(Mat parallelData[], Mat crossData[], string pathToFolder)
 }
 
 /**
- * Compute the specular normals given parallel data.
+ * Compute the specular normals given parallel and cross data.
  * Also requires a mask on which data is computed.
  * @brief computeNormals
  * @param parallelData
  * @param crossData
+ * @param mask
  * @param pathToFolder
  */
-void computeNormals(Mat parallelData[], string pathToFolder)
+void computeNormals(Mat parallelData[], const Mat &mask, string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
@@ -487,12 +522,12 @@ void computeNormals(Mat parallelData[], string pathToFolder)
         }
     }
 
-    alignAverageSurfaceNormal(normals, pathToFolder);
+    //Align the average surface normal with (0,0,1) (flat sample assumption)
+    alignAverageSurfaceNormal(normals, mask);
 
-    //Color mapping
+    //Color mapping RGB = XYZ
     for(int i = 0 ; i<height ; i++)
     {
-
         for(int j = 0 ; j<width ; j++)
         {
             normals.at<Vec3f>(i,j).val[2] = (normals.at<Vec3f>(i,j).val[2]+1.0)/2.0;
@@ -504,6 +539,7 @@ void computeNormals(Mat parallelData[], string pathToFolder)
 
     normals *= 255.0;
     normals.convertTo(normals, CV_8UC3);
+    //Save as BMP : no gamma!
     imwrite(pathToFolder + "/textures/normalMap.bmp", normals);
 }
 
@@ -528,16 +564,13 @@ void removeAmbientIllumination(Mat images[], int numberOfImages, const Mat &ambi
  * Rotates the normals so that the average surface normal is (0,0,1)
  * @brief alignAverageSurfaceNormal
  * @param normals
- * @param pathToFolder
+ * @param mask
  */
-void alignAverageSurfaceNormal(Mat &normals, string pathToFolder)
+void alignAverageSurfaceNormal(Mat &normals, const Mat &mask)
 {
     int height = normals.rows;
     int width = normals.cols;
 
-    Mat normalMask = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
-    normalMask.convertTo(normalMask, CV_32FC3);
-    normalMask /= 255.0;
 
     /*----Compute average surface normal---*/
     //On the sample only !
@@ -545,11 +578,10 @@ void alignAverageSurfaceNormal(Mat &normals, string pathToFolder)
     double numberOfNormalsAccounted = 0.0;
     for(int i = 0 ; i<height ; i++)
     {
-
         for(int j = 0 ; j<width ; j++)
         {
             //Calculate the average surface normal on the mask only
-            if(normalMask.at<Vec3f>(i,j).val[2] >0.9)
+            if(mask.at<Vec3f>(i,j).val[2] >0.9)
             {
                 if(isnan(normals.at<Vec3f>(i,j).val[2]) || isnan(normals.at<Vec3f>(i,j).val[1]) || isnan(normals.at<Vec3f>(i,j).val[0]))
                 {
@@ -570,7 +602,7 @@ void alignAverageSurfaceNormal(Mat &normals, string pathToFolder)
     averageNormal /= numberOfNormalsAccounted;
     normalizeVector(averageNormal);
 
-    cout << averageNormal << endl;
+    cout << "Average surface normal : " << averageNormal << endl;
 
     /*----Compute the rotation matrix---*/
     //Align all the normals with normal with (0,0,1)
@@ -616,8 +648,8 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
-    Mat normals = Mat(parallelData[1].rows, parallelData[1].cols, CV_32FC3);
 
+    //Remove the cross data from the parallel data for the L1 moments
     xGradient = parallelData[1].clone()-crossData[1].clone();
     minusXGradient = parallelData[2].clone()-crossData[2].clone();
 
@@ -627,6 +659,8 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string pathToFolder)
     Mat horizontalGradient = minusXGradient-xGradient;
     Mat verticalGradient = yGradient-minusYGradient;
 
+    //The general formula for the roughness is sigma^2 = L1^2/L0-L2/L0 with L1 and L2 the first and second order moments.
+    //Compute it in the x direction and the y direction
     divide(horizontalGradient, parallelData[0]-crossData[0], horizontalGradient);
     divide(verticalGradient, parallelData[0]-crossData[0], verticalGradient);
 
@@ -639,6 +673,7 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string pathToFolder)
     secondOrderGradientX -= horizontalGradient.mul(horizontalGradient);
     secondOrderGradientY -= verticalGradient.mul(verticalGradient);
 
+    //Calculate the final roughness is sigma^2 = sqrt(sigma_x^4+sigma_y^4)/4
     Mat roughness = Mat::zeros(secondOrderGradientX.rows, secondOrderGradientX.cols, CV_32FC3);
 
     int height = parallelData[0].rows;
@@ -656,12 +691,11 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string pathToFolder)
 
             roughness.at<Vec3f>(i,j).val[2] = sqrt(secondOrderGradientX.at<Vec3f>(i,j).val[1]*secondOrderGradientX.at<Vec3f>(i,j).val[1]
                     +secondOrderGradientY.at<Vec3f>(i,j).val[1]*secondOrderGradientY.at<Vec3f>(i,j).val[1]);
-
-
         }
     }
 
     roughness /= 4.0;
+
     savePFM(roughness, pathToFolder + "/textures/roughness.pfm");
 
 }
@@ -683,6 +717,8 @@ void computeRoughness(Mat parallelData[], string pathToFolder)
     yGradient = parallelData[3].clone();
     minusYGradient = parallelData[4].clone();
 
+    //The general formula for the roughness is sigma^2 = L1^2/L0-L2/L0 with L1 and L2 the first and second order moments.
+    //Compute it in the x direction and the y direction
     Mat horizontalGradient = minusXGradient-xGradient;
     Mat verticalGradient = yGradient-minusYGradient;
 
@@ -698,6 +734,7 @@ void computeRoughness(Mat parallelData[], string pathToFolder)
     secondOrderGradientX -= horizontalGradient.mul(horizontalGradient);
     secondOrderGradientY -= verticalGradient.mul(verticalGradient);
 
+    //Calculate the final roughness is sigma^2 = sqrt(sigma_x^4+sigma_y^4)/4
     Mat roughness = Mat::zeros(secondOrderGradientX.rows, secondOrderGradientX.cols, CV_32FC3);
 
     int height = parallelData[0].rows;
@@ -721,5 +758,4 @@ void computeRoughness(Mat parallelData[], string pathToFolder)
 
     roughness /= 4.0;
     savePFM(roughness, pathToFolder + "/textures/roughness.pfm");
-
 }

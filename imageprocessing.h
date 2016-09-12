@@ -65,7 +65,7 @@
  * @brief scaleTo01Range
  * @param image
  */
-void scaleTo01Range(cv::Mat &image, cv::Mat &maskObject);
+void scaleTo01Range(cv::Mat &image, const cv::Mat &maskObject);
 
 /**
  * For each pixel of each image sets RGB to 0 if any of R, G, B is 0

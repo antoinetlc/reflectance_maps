@@ -57,9 +57,6 @@
 #include <sstream>
 #include <fstream>
 
-/*---- Qt ----*/
-#include <QObject>
-
 #include "mathfunctions.h"
 #include "imageprocessing.h"
 
@@ -72,52 +69,60 @@
  */
 void computeMaps(std::string pathToFolder, bool isCrossData);
 
-/**
- * Scale the value of parallel and cross polarised data to the value of the checkerchart.
- * @brief checkerchartScaling
- * @param parallelData
- * @param crossData
- * @param pathToFolder
- */
-void checkerchartScaling(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
 
 /**
  * Scale the value of parallel polarised data to the value of the checkerchart.
  * @brief checkerchartScaling
  * @param parallelData
+ * @param mask
  * @param pathToFolder
  */
-void checkerchartScaling(cv::Mat parallelData[], std::string pathToFolder);
+void checkerchartScaling(cv::Mat parallelData[], const cv::Mat &mask, std::string pathToFolder);
+
+/**
+ * Scale the value of parallel and cross polarised data to the value of the checkerchart.
+ * @brief checkerchartScaling
+ * @param parallelData
+ * @param crossData
+ * @param mask
+ * @param pathToFolder
+ */
+void checkerchartScaling(cv::Mat parallelData[], cv::Mat crossData[], const cv::Mat &mask, std::string pathToFolder);
 
 /**
  * Compute the diffuse and specular albedo given parallel and cross polarised data.
  * Also requires a mask on which data is computed.
  * @brief checkerchartScaling
  * @param parallelData
+ * @param mask
  * @param pathToFolder
  */
-void diffuseSpecularSeparation(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
+void diffuseSpecularSeparation(cv::Mat parallelData[], cv::Mat crossData[], const cv::Mat &mask, std::string pathToFolder);
 
 /**
  * Compute the specular normals given parallel and cross data.
  * Also requires a mask on which data is computed.
- * @brief computeNormals
+ * The sample is assumed to be almost flat without big variations in the z component of the normal.
+ * Therefore the measurements have been made without the zGradients.
  * @param parallelData
  * @param crossData
+ * @param mask
  * @param pathToFolder
  */
-void computeNormals(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
-
+void computeNormals(cv::Mat parallelData[], cv::Mat crossData[], const cv::Mat &mask, std::string pathToFolder);
 
 /**
- * Compute the specular normals given parallel data.
+ * Compute the specular normals given parallel and cross data.
  * Also requires a mask on which data is computed.
+ * The sample is assumed to be almost flat without big variations in the z component of the normal.
+ * Therefore the measurements have been made without the zGradients.
  * @brief computeNormals
  * @param parallelData
  * @param crossData
+ * @param mask
  * @param pathToFolder
  */
-void computeNormals(cv::Mat parallelData[], std::string pathToFolder);
+void computeNormals(cv::Mat parallelData[], const cv::Mat &mask, std::string pathToFolder);
 
 /**
  * Remove ambient illumination from a set of images.
@@ -132,9 +137,9 @@ void removeAmbientIllumination(cv::Mat images[], int numberOfImages, const cv::M
  * Rotates the normals so that the average surface normal is (0,0,1)
  * @brief alignAverageSurfaceNormal
  * @param normals
- * @param pathToFolder
+ * @param mask
  */
-void alignAverageSurfaceNormal(cv::Mat &normals, std::string pathToFolder);
+void alignAverageSurfaceNormal(cv::Mat &normals, const cv::Mat &mask);
 
 /**
  * Calculates the roughness using both cross and parallel polarised data.
