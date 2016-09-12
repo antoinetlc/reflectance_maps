@@ -1,4 +1,4 @@
-# reflectance_maps
+# Reflectance Maps
 This project is an open-source implementation of the papers : 
 
 * Rapid Acquisition of Specular and Diffuse Normal Maps from Polarized Spherical Gradient Illumination. [Ma et al. 2007]
