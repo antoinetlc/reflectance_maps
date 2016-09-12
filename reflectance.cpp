@@ -43,43 +43,61 @@ using namespace std;
 using namespace cv;
 
 /**
- * Function to compute the reflectance maps given the name on an object and a bool that says if the
+ * Function to compute the reflectance maps given the path to the data folder and a bool that says if the
  * cross polarised data exists.
  * @brief computeMaps
- * @param object
+ * @param pathToFolder
  * @param isCrossData
  */
-void computeMaps(string object, bool isCrossData)
+void computeMaps(string pathToFolder, bool isCrossData)
 {
     Mat parallelData[NUMBER_OF_GRADIENT_ILLUMINATION];
     Mat crossData[NUMBER_OF_GRADIENT_ILLUMINATION];
 
     ostringstream osstream;
-    unsigned int imageNumberPar = 3396;
-    int imageNumberCross = 2934;
+    unsigned int imageNumberPar = 2855;
+    int imageNumberCross = 2869;
 
     /*--Load images parallelPolarised ---*/
     for(int i = 0 ; i<NUMBER_OF_GRADIENT_ILLUMINATION ; i++)
     {
         int imageNumber = imageNumberPar +i;
 
-        osstream <<  qApp->applicationDirPath().toStdString() << "/Data/Maps/" << object << "/par/IMG_" << imageNumber << ".JPG";
+        osstream <<  pathToFolder << "/par/IMG_" << imageNumber << ".JPG";
         parallelData[i] = imread(osstream.str(), CV_LOAD_IMAGE_COLOR);
-        parallelData[i].convertTo(parallelData[i], CV_32FC3);
-        parallelData[i] /= 255.0;
 
-        //Remove Gamma
-        removeGammaCorrection(parallelData[i], parallelData[i], 2.2);
+        if(!parallelData[i].data)
+        {
+            cerr << "Could not load image : " << osstream.str() << endl;
+            exit(-1);
+        }
+        else
+        {
+            parallelData[i].convertTo(parallelData[i], CV_32FC3);
+            parallelData[i] /= 255.0;
+
+            //Remove Gamma
+            removeGammaCorrection(parallelData[i], parallelData[i], 2.2);
+        }
 
         osstream.str("");
     }
+
     /*---Load the ambient illumination---*/
-    Mat ambientPar = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/par/ambient.JPG", CV_LOAD_IMAGE_COLOR);
+    Mat ambientPar = imread(pathToFolder + "/par/ambient.JPG", CV_LOAD_IMAGE_COLOR);
 
-    ambientPar.convertTo(ambientPar, CV_32FC3);
-    ambientPar /= 255.0;
+    if(!ambientPar.data)
+    {
+        cerr << "Could not load image : " << pathToFolder + "/par/ambient.JPG" << endl;
+        exit(-1);
+    }
+    else
+    {
+        ambientPar.convertTo(ambientPar, CV_32FC3);
+        ambientPar /= 255.0;
 
-    removeAmbientIllumination(parallelData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientPar);
+        removeAmbientIllumination(parallelData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientPar);
+    }
 
     //Load images cross polarised
     if(isCrossData)
@@ -88,56 +106,74 @@ void computeMaps(string object, bool isCrossData)
         {
             int imageNumber = imageNumberCross +i;
 
-            osstream << qApp->applicationDirPath().toStdString() << "/Data/Maps/" << object << "/cross/IMG_" << imageNumber << ".JPG";
+            osstream << pathToFolder << "/cross/IMG_" << imageNumber << ".JPG";
             crossData[i] = imread(osstream.str(), CV_LOAD_IMAGE_COLOR);
-            crossData[i].convertTo(crossData[i], CV_32FC3);
-            crossData[i] /= 255.0;
 
-            //Remove Gamma
-            removeGammaCorrection(crossData[i], crossData[i], 2.2);
+            if(!crossData[i].data)
+            {
+                cerr << "Could not load image : " << osstream.str() << endl;
+                exit(-1);
+            }
+            else
+            {
+                crossData[i].convertTo(crossData[i], CV_32FC3);
+                crossData[i] /= 255.0;
+
+                //Remove Gamma correction
+                removeGammaCorrection(crossData[i], crossData[i], 2.2);
+            }
+
 
             osstream.str("");
         }
 
 
         /*---Remove the ambient illumination---*/
-        Mat ambientCross = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/cross/ambient.JPG", CV_LOAD_IMAGE_COLOR);
+        Mat ambientCross = imread(pathToFolder + "/cross/ambient.JPG", CV_LOAD_IMAGE_COLOR);
 
-        ambientCross.convertTo(ambientCross, CV_32FC3);
-        ambientCross /= 255.0;
+        if(!ambientCross.data)
+        {
+            cerr << "Could not load image : " << pathToFolder + "/par/ambient.JPG" << endl;
+            exit(-1);
+        }
+        else
+        {
+            ambientCross.convertTo(ambientCross, CV_32FC3);
+            ambientCross /= 255.0;
 
-        removeAmbientIllumination(crossData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientCross);
+            removeAmbientIllumination(crossData, NUMBER_OF_GRADIENT_ILLUMINATION, ambientCross);
+        }
 
         /*--Scale values with checkerchart ---*/
-        checkerchartScaling(parallelData, crossData, object);
+        checkerchartScaling(parallelData, crossData, pathToFolder);
 
-        diffuseSpecularSeparation(parallelData, crossData, object);
+        diffuseSpecularSeparation(parallelData, crossData, pathToFolder);
 
-        computeNormals(parallelData, object);
+        computeNormals(parallelData, pathToFolder);
 
-        computeRoughness(parallelData, object);
+        computeRoughness(parallelData, pathToFolder);
 
     }
     else
     {
         /*--Scale values with checkerchart ---*/
-        checkerchartScaling(parallelData, object);
+        checkerchartScaling(parallelData, pathToFolder);
 
         /*-Specular data-*/
         Mat specular = parallelData[0].clone();
 
-        Mat maskObject = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
+        Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
         maskObject.convertTo(maskObject, CV_32FC3);
         maskObject /= 255.0;
 
         //Scale down to 01 range and save the result
         scaleTo01Range(specular, maskObject);
 
-        savePFM(specular, qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/specular.pfm");
+        savePFM(specular, pathToFolder + "/textures/specular.pfm");
 
-        computeNormals(parallelData, object);
+        computeNormals(parallelData, pathToFolder);
 
-        computeRoughness(parallelData, object);
+        computeRoughness(parallelData, pathToFolder);
 
     }
 }
@@ -146,16 +182,16 @@ void computeMaps(string object, bool isCrossData)
  * Scale the value of parallel polarised data to the value of the checkerchart.
  * @brief checkerchartScaling
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void checkerchartScaling(Mat parallelData[], string object)
+void checkerchartScaling(Mat parallelData[], string pathToFolder)
 {
     /*--Read checkerchart values---*/
     string RParPicture, GParPicture, BParPicture;
     string checkerchartPar;
     float ratioParR = 0.0, ratioParG = 0.0, ratioParB = 0.0;
 
-    ifstream checkerFile(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/checker.txt", ios::in);
+    ifstream checkerFile(pathToFolder + "/checker.txt", ios::in);
 
     //First line is parallel and second is cross polarised
     checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
@@ -185,7 +221,7 @@ void checkerchartScaling(Mat parallelData[], string object)
         }
     }
 
-    Mat maskObject = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
+    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
     maskObject.convertTo(maskObject, CV_32FC3);
     maskObject /= 255.0;
 
@@ -202,9 +238,9 @@ void checkerchartScaling(Mat parallelData[], string object)
  * @brief checkerchartScaling
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void checkerchartScaling(Mat parallelData[], Mat crossData[], string object)
+void checkerchartScaling(Mat parallelData[], Mat crossData[], string pathToFolder)
 {
     /*--Read checkerchart values---*/
     string RParPicture, GParPicture, BParPicture;
@@ -215,7 +251,7 @@ void checkerchartScaling(Mat parallelData[], Mat crossData[], string object)
     string checkerchartCross;
     float ratioCrossR = 0.0, ratioCrossG = 0.0, ratioCrossB = 0.0;
 
-    ifstream checkerFile(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/checker.txt", ios::in);
+    ifstream checkerFile(pathToFolder + "/checker.txt", ios::in);
 
     //First line is parallel and second is cross polarised
     checkerFile >> RParPicture >> GParPicture >> BParPicture >> checkerchartPar;
@@ -259,7 +295,7 @@ void checkerchartScaling(Mat parallelData[], Mat crossData[], string object)
         }
      }
 
-    Mat maskObject = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
+    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
     maskObject.convertTo(maskObject, CV_32FC3);
     maskObject /= 255.0;
 
@@ -277,15 +313,15 @@ void checkerchartScaling(Mat parallelData[], Mat crossData[], string object)
  * Also requires a mask on which data is computed.
  * @brief checkerchartScaling
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], string object)
+void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], string pathToFolder)
 {
     Mat diffuse;
     Mat specular;
 
 
-    Mat maskObject = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
+    Mat maskObject = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
     maskObject.convertTo(maskObject, CV_32FC3);
     maskObject /= 255.0;
 
@@ -300,8 +336,8 @@ void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], string objec
     scaleTo01Range(diffuse, maskObject);
     scaleTo01Range(specular, maskObject);
 
-    savePFM(diffuse, qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/diffuse.pfm");
-    savePFM(specular, qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/specular.pfm");
+    savePFM(diffuse, pathToFolder + "/textures/diffuse.pfm");
+    savePFM(specular, pathToFolder + "/textures/specular.pfm");
 
 }
 
@@ -311,9 +347,9 @@ void diffuseSpecularSeparation(Mat parallelData[], Mat crossData[], string objec
  * @brief computeNormals
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeNormals(Mat parallelData[], Mat crossData[], string object)
+void computeNormals(Mat parallelData[], Mat crossData[], string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
@@ -368,7 +404,7 @@ void computeNormals(Mat parallelData[], Mat crossData[], string object)
         }
     }
 
-    alignAverageSurfaceNormal(normals, object);
+    alignAverageSurfaceNormal(normals, pathToFolder);
 
     //Color mapping
     for(int i = 0 ; i<height ; i++)
@@ -385,7 +421,7 @@ void computeNormals(Mat parallelData[], Mat crossData[], string object)
 
     normals *= 255.0;
     normals.convertTo(normals, CV_8UC3);
-    imwrite(qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/normalMap.bmp", normals);
+    imwrite(pathToFolder + "/textures/normalMap.bmp", normals);
 }
 
 /**
@@ -394,9 +430,9 @@ void computeNormals(Mat parallelData[], Mat crossData[], string object)
  * @brief computeNormals
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeNormals(Mat parallelData[], string object)
+void computeNormals(Mat parallelData[], string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
@@ -451,7 +487,7 @@ void computeNormals(Mat parallelData[], string object)
         }
     }
 
-    alignAverageSurfaceNormal(normals, object);
+    alignAverageSurfaceNormal(normals, pathToFolder);
 
     //Color mapping
     for(int i = 0 ; i<height ; i++)
@@ -468,7 +504,7 @@ void computeNormals(Mat parallelData[], string object)
 
     normals *= 255.0;
     normals.convertTo(normals, CV_8UC3);
-    imwrite(qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/normalMap.bmp", normals);
+    imwrite(pathToFolder + "/textures/normalMap.bmp", normals);
 }
 
 /**
@@ -492,14 +528,14 @@ void removeAmbientIllumination(Mat images[], int numberOfImages, const Mat &ambi
  * Rotates the normals so that the average surface normal is (0,0,1)
  * @brief alignAverageSurfaceNormal
  * @param normals
- * @param object
+ * @param pathToFolder
  */
-void alignAverageSurfaceNormal(Mat &normals, string object)
+void alignAverageSurfaceNormal(Mat &normals, string pathToFolder)
 {
     int height = normals.rows;
     int width = normals.cols;
 
-    Mat normalMask = imread(qApp->applicationDirPath().toStdString() + "/Data/Maps/" + object + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
+    Mat normalMask = imread(pathToFolder + "/normalMask.JPG", CV_LOAD_IMAGE_COLOR);
     normalMask.convertTo(normalMask, CV_32FC3);
     normalMask /= 255.0;
 
@@ -574,9 +610,9 @@ void alignAverageSurfaceNormal(Mat &normals, string object)
  * @brief computeRoughness
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeRoughness(Mat parallelData[], Mat crossData[], string object)
+void computeRoughness(Mat parallelData[], Mat crossData[], string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
@@ -626,7 +662,7 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string object)
     }
 
     roughness /= 4.0;
-    savePFM(roughness, qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/roughness.pfm");
+    savePFM(roughness, pathToFolder + "/textures/roughness.pfm");
 
 }
 
@@ -634,9 +670,9 @@ void computeRoughness(Mat parallelData[], Mat crossData[], string object)
  * Calculates the roughness using only parallel polarised data.
  * @brief computeRoughness
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void computeRoughness(Mat parallelData[], string object)
+void computeRoughness(Mat parallelData[], string pathToFolder)
 {
     Mat xGradient, minusXGradient;
     Mat yGradient, minusYGradient;;
@@ -684,6 +720,6 @@ void computeRoughness(Mat parallelData[], string object)
     }
 
     roughness /= 4.0;
-    savePFM(roughness, qApp->applicationDirPath().toStdString() +"/Data/Maps/" + object + "/textures/roughness.pfm");
+    savePFM(roughness, pathToFolder + "/textures/roughness.pfm");
 
 }

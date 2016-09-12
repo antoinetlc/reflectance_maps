@@ -169,13 +169,17 @@ void gammaCorrection(const Mat &rgbImage, Mat &rgbImageWithGamma, double gamma)
  */
 void removeGammaCorrection(const Mat &rgbImage, Mat &rgbImageWithoutGamma, double gamma)
 {
-    Mat channel[3], channel32F[3], channelWithoutGamma[3];
+    Mat channel[3], channelWithoutGamma[3];
 
     split(rgbImage, channel);
 
-    pow(channel32F[0], gamma, channelWithoutGamma[0]);
-    pow(channel32F[1], gamma, channelWithoutGamma[1]);
-    pow(channel32F[2], gamma, channelWithoutGamma[2]);
+    channel[0].convertTo(channel[0], CV_32F);
+    channel[1].convertTo(channel[1], CV_32F);
+    channel[2].convertTo(channel[2], CV_32F);
+
+    pow(channel[0], gamma, channelWithoutGamma[0]);
+    pow(channel[1], gamma, channelWithoutGamma[1]);
+    pow(channel[2], gamma, channelWithoutGamma[2]);
 
     merge(channelWithoutGamma,3,rgbImageWithoutGamma);
 }

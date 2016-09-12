@@ -64,39 +64,39 @@
 #include "imageprocessing.h"
 
 /**
- * Function to compute the reflectance maps given the name on an object and a bool that says if the
+ * Function to compute the reflectance maps given the path to the data folder and a bool that says if the
  * cross polarised data exists.
  * @brief computeMaps
- * @param object
+ * @param pathToFolder
  * @param isCrossData
  */
-void computeMaps(std::string object, bool isCrossData);
+void computeMaps(std::string pathToFolder, bool isCrossData);
 
 /**
  * Scale the value of parallel and cross polarised data to the value of the checkerchart.
  * @brief checkerchartScaling
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void checkerchartScaling(cv::Mat parallelData[], cv::Mat crossData[], std::string object);
+void checkerchartScaling(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
 
 /**
  * Scale the value of parallel polarised data to the value of the checkerchart.
  * @brief checkerchartScaling
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void checkerchartScaling(cv::Mat parallelData[], std::string object);
+void checkerchartScaling(cv::Mat parallelData[], std::string pathToFolder);
 
 /**
  * Compute the diffuse and specular albedo given parallel and cross polarised data.
  * Also requires a mask on which data is computed.
  * @brief checkerchartScaling
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void diffuseSpecularSeparation(cv::Mat parallelData[], cv::Mat crossData[], std::string object);
+void diffuseSpecularSeparation(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
 
 /**
  * Compute the specular normals given parallel and cross data.
@@ -104,9 +104,9 @@ void diffuseSpecularSeparation(cv::Mat parallelData[], cv::Mat crossData[], std:
  * @brief computeNormals
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeNormals(cv::Mat parallelData[], cv::Mat crossData[], std::string object);
+void computeNormals(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
 
 
 /**
@@ -115,9 +115,9 @@ void computeNormals(cv::Mat parallelData[], cv::Mat crossData[], std::string obj
  * @brief computeNormals
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeNormals(cv::Mat parallelData[], std::string object);
+void computeNormals(cv::Mat parallelData[], std::string pathToFolder);
 
 /**
  * Remove ambient illumination from a set of images.
@@ -132,26 +132,26 @@ void removeAmbientIllumination(cv::Mat images[], int numberOfImages, const cv::M
  * Rotates the normals so that the average surface normal is (0,0,1)
  * @brief alignAverageSurfaceNormal
  * @param normals
- * @param object
+ * @param pathToFolder
  */
-void alignAverageSurfaceNormal(cv::Mat &normals, std::string object);
+void alignAverageSurfaceNormal(cv::Mat &normals, std::string pathToFolder);
 
 /**
  * Calculates the roughness using both cross and parallel polarised data.
  * @brief computeRoughness
  * @param parallelData
  * @param crossData
- * @param object
+ * @param pathToFolder
  */
-void computeRoughness(cv::Mat parallelData[], cv::Mat crossData[], std::string object);
+void computeRoughness(cv::Mat parallelData[], cv::Mat crossData[], std::string pathToFolder);
 
 /**
  * Calculates the roughness using only parallel polarised data.
  * @brief computeRoughness
  * @param parallelData
- * @param object
+ * @param pathToFolder
  */
-void computeRoughness(cv::Mat parallelData[], std::string object);
+void computeRoughness(cv::Mat parallelData[], std::string pathToFolder);
 
 #endif // REFLECTANCE
 

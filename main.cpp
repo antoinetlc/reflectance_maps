@@ -38,12 +38,15 @@
  */
 
 #include <iostream>
+#include <string>
 
 #include "reflectance.h"
 
+using namespace std;
+
 int main(void)
 {
-
+    computeMaps(string(""), true);
 
     return 0;
 }
