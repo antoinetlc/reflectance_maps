@@ -16,7 +16,7 @@ This program can compute reflectance maps from pictures taken with polarised gra
 
 **Important note** : In this implementation the sample is supposed to be almost flat and illuminated by a flat light source (e.g LCD screen) and not a light stage.
 
-During the measurements the gradients illumination used were : order 0 (full white illumination), +X gradient, -X gradient, +Y gradient, -Y gradient, second order X gradient and Y second order gradient. The +Z and -Z gradients are omited due to the planar assumption of the surface (see note). The light source was also linearly polarised (LCD screen) and a polariser was added on the camera to allow the diffuse/specular separation. Please refer to the papers for more details.
+During the measurements the gradients illumination used were : order 0 (full white illumination), +X gradient, -X gradient, +Y gradient, -Y gradient, second order X gradient and Y second order gradient. The +Z and -Z gradients were omited due to the planar assumption of the surface (see note). The light source was also linearly polarised (LCD screen) and a polariser was added on the camera to allow the diffuse/specular separation. Please refer to the papers for more details.
 
 ## Compilation
 This program has been compiled and tested on Windows environment.
