@@ -30,6 +30,7 @@ A "reflectance_maps.pro" file is provided for compilation with QtCreator IDE. Pl
 After the measurements, create a directory with the following folders and files : 
 * par/
 * cross/
+* texture/
 * checker.txt
 * mask.jpg
 
@@ -45,6 +46,8 @@ The "par" and "cross" folders contain the measurements with parallel polarised i
 
 Each folder must also contain an ambient.jpg file that corresponds to the sample taken without the LCD screen switched on (recording of the ambient illumination of the room).
 
+The results will be saved in the "texture" folder. 
+
 Finally two files have to be added. 
 
 * A mask.jpg file i.e a mask that describes the area of the image where the sample is. This is important to avoid computations on the background of the image. The region of the sample must have a red color RGB = (255, 0 , 0).
@@ -57,7 +60,7 @@ R_par G_par B_par PatchReflectance
 R_cross G_cross B_cross PatchReflectance
 ```
 
-Call the compute_maps function with a path to this directory to start the computation (see main.cpp).
+Call the compute_maps function with its first parameter set to the path of this directory to start the computation (see main.cpp).
 
 ## License
 
