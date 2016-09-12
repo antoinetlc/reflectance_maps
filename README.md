@@ -57,6 +57,8 @@ R_par G_par B_par PatchReflectance
 R_cross G_cross B_cross PatchReflectance
 ```
 
+Call the compute_maps function with a path to this directory to start the computation (see main.cpp).
+
 ## License
 
 Reflectance Maps. Author :  Antoine TOISOUL LE CANN. Copyright © 2016 Antoine TOISOUL LE CANN, Imperial College London. All rights reserved.
