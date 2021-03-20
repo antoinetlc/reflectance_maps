@@ -12,6 +12,8 @@ Version 1.0
 
 ## Principle
 
+For an in-depth explanation (with pictures) of this program, please look at the [project page](https://www.antoinetlc.com/software/reflectance-maps-acquisition-with-gradient-illumination).
+
 This program can compute reflectance maps from pictures taken with polarised gradient illumination. These reflectance maps include spatially varying diffuse and specular albedo, normal map and roughness map.
 
 **Important note** : In this implementation the sample is supposed to be almost flat and illuminated by a flat light source (e.g LCD screen) and not a light stage.
